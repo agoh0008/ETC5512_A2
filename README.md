@@ -1,6 +1,6 @@
 # ETC5512: Assignment 2 - Analyzing the Impact of Cost-of-Living on Marginal Seats in Victoria
 
-This repository includes the files and code for Assignment 2 of the ETC5512 unit (Wild-caught data).
+This repository includes the work and materials for Assignment 2 of the ETC5512 unit (Wild-caught data).
 
 The assignment involves analyzing the impact of cost-of-living changes on marginal seats in Victoria, based on the 2022 Australian federal election and census data. The goal is to determine if voters in marginal seats are more affected by the cost-of-living crisis compared to other electorates.
 
