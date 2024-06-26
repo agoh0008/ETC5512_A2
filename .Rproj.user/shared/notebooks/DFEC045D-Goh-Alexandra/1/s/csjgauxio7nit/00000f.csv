@@ -1,0 +1,4 @@
+"0",""
+"0","election2022 <- read_csv(""https://results.aec.gov.au/27966/Website/Downloads/HouseDopByDivisionDownload-27966.csv"", skip = 1) %>%"
+"0","  filter(StateAb == ""VIC"")"
+"0",""

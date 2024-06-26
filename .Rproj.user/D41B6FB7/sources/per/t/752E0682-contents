@@ -1,0 +1,442 @@
+---
+title: "Brief communiction for Victorian Labour Party"
+subtitle: ETC5512 Assignment 2, Master of Business Analytics
+author: Prepared by Alexandra Goh, 29796431, agoh0008@student.monash.edu 
+date: '`r Sys.Date()`'
+output: 
+  html_document:
+    css: monashreport.css
+    includes:
+      before_body: header.html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      message = FALSE, 
+                      warning = FALSE)
+library(tidyverse)
+library(sf)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+```
+
+# 🔍 Analysis
+
+```{r election-data, eval = TRUE, message = FALSE}
+
+election2022 <- read_csv("https://results.aec.gov.au/27966/Website/Downloads/HouseDopByDivisionDownload-27966.csv", skip = 1) %>%
+  filter(StateAb == "VIC")
+
+```
+
+```{r vic-marginal-seats, eval = TRUE, message = FALSE}
+
+vic_marginal <- election2022 %>%
+  group_by(DivisionNm) %>%
+  filter(CalculationType == "Preference Percent" &
+           CountNumber == max(CountNumber) &
+           Elected == "Y" &
+           CalculationValue <56)
+
+vic_marginal
+         
+```
+
+
+### Task 1
+
+(i) The marginal seats in Victoria are Aston, Casey, Deakin, Goldstein, Higgins, Kooyong, McEwen, Menzies, Monash, Nicholls and Wannon. These are all divisons where its winning party received less than 56% of the vote (i.e. from the final count results.
+
+```{r vic-map, eval = TRUE, message = FALSE, warning = FALSE}
+
+vic_map <- read_sf(here::here("data/vic-july-2021-esri/E_VIC21_region.shp")) %>%
+  mutate(DivisionNm = (Elect_div)) %>%
+  st_crop(xmin = 100, xmax = 155.2,
+          ymin = -50.1, ymax = -30.6)
+
+party_colors <- c(
+  "ALP" = "#DE3533", "LNP" = "#ADD8E6",
+  "KAP" = "#8B0000", "GRN" = "#10C25B",
+  "GVIC" = "#10C25B", "XEN" = "#ff6300",
+  "LP" = "#0047AB", "NP" = "#0a9cca",
+  "IND" = "#000000"
+)
+
+```
+
+(ii) As seen in the map below, majority of the marginal electorates appear to be located within urban/sub-urban areas of Victoria. For instance, it is observed that 7 out of the 11 marginal electorates are located in and around the city of Melbourne and its surrounding suburbs whereas the other 4 electorates (i.e. McEwen, Nicholls, Monash and Wannon) comprise of rural electorates. Additionally, most of the marginal electorates were won by the Liberal Party. 
+
+```{r vicmap22, eval = TRUE, message = FALSE}
+
+vic_map <- st_zm(vic_map) %>% 
+  left_join(vic_marginal, by = "DivisionNm") 
+
+vic_labels <- vic_map %>%
+  filter(DivisionNm %in% c("Aston", "Casey", "Deakin", "Goldstein", "Higgins", "Kooyong", 
+                           "McEwen", "Menzies", "Monash", "Nicholls", "Wannon")) %>%
+  st_centroid() 
+
+ggplot(vic_map) +
+  geom_sf(aes(geometry = geometry, fill = PartyAb), 
+          color = "white") +
+  geom_sf_text(data = vic_labels, 
+               aes(label = "•"),
+               size = 3, color = "black") + 
+  scale_fill_manual(values = party_colors) +
+  labs(title = "Marginal Electorates in Victoria",
+       subtitle = "Federal Election 2022",
+       fill = "Winning Party")
+
+```
+
+(iii) The number of voters currently enrolled in each of the marginal seats are as shown in the table below.
+
+```{r vic_enrolment22, eval = TRUE, message = FALSE}
+
+enrolment_vic <- read_csv("https://results.aec.gov.au/27966/Website/Downloads/GeneralEnrolmentByDivisionDownload-27966.csv", skip = 1) %>%
+  filter(StateAb == "VIC") %>%
+  filter(DivisionNm %in% c("Aston", "Casey", "Deakin", "Goldstein", "Higgins", "Kooyong", 
+         "McEwen", "Menzies", "Monash", "Nicholls", "Wannon"))
+
+enrolment_vic <- enrolment_vic %>%
+  select(DivisionNm, Enrolment)
+
+enrolment_vic_table <- enrolment_vic %>%
+  kable(caption = "Number of Voters Currently Enrolled in Victorian Marginal Seats", align = "c") %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover"))
+
+enrolment_vic_table
+
+```
+
+### Task 2
+
+(i) No, we cannot compare the 2016 and 2021 SA1 regions directly as SA1 regions may change over time to reflect changes in population growth, new housing developments or altered transport infrastructure. This is important to take into account when making data comparisons between different census years; a spatial join operation can be used to combine the data from 2016 and 2021 datasets based on their spatial locations therefore allowing data comparisons for SA1 regions that overlap between these datasets. 
+
+```{r , eval = FALSE}
+
+SA1_2016 <- read_sf(here::here("data/Geopackage_2016_EIUWA_for_VIC/census2016_eiuwa_vic_short.gpkg"),
+                    layer = "census2016_eiuwa_vic_sa1_short")
+save(SA1_2016, file=here::here("data/Geopackage_2016_EIUWA_for_VIC.rda"))
+
+SA1_2021_G02 <- read_sf(here::here("data/Geopackage_2021_G02_VIC_GDA2020/G02_VIC_GDA2020.gpkg"), 
+                        layer = "G02_SA1_2021_VIC")
+save(SA1_2021_G02, file=here::here("data/Geopackage_2021_G02_VIC_GDA2020.rda"))
+
+```
+
+```{r , eval = TRUE}
+
+load(here::here("data/Geopackage_2016_EIUWA_for_VIC.rda"))
+load(here::here("data/Geopackage_2021_G02_VIC_GDA2020.rda"))
+
+```
+
+
+(ii) Based on the two histograms below, we can see that there is an upward shift in the distribution of median weekly rents between 2016 and 2021, with a steeper increase observed in 2021. This infers that cost of renting has risen over the past five years in Victoria. Additionally, certain SA1 regions may also have experienced greater increases in weekly rents as compared to others; for instance, there appears to be more households paying weekly rents >AUD500 in 2021 as compared to the number of households paying weekly rents >AUD500 in 2016. 
+
+```{r weekly_rent2016, eval = TRUE, message = FALSE}
+
+rent_2016hist <- ggplot(SA1_2016, aes(x = Median_rent_weekly)) +
+  geom_histogram(binwidth = 20, fill = "steelblue") +
+  scale_fill_brewer(palette = "Set1") +
+  ggtitle("Distribution of Weekly Rents in 2016") +
+  xlab("Median Rent (Weekly)") +
+  ylab("Count")
+
+rent_2016hist
+
+```
+
+```{r weekly_rent2021, eval = TRUE, message = FALSE}
+
+rent_2021hist <- ggplot(SA1_2021_G02, aes(x = Median_rent_weekly)) +
+  geom_histogram(binwidth = 20, fill = "red") +
+  scale_fill_brewer(palette = "Set1") +
+  ggtitle("Distribution of Weekly Rents in 2021") +
+  xlab("Median Rent (Weekly)") +
+  ylab("Count")
+
+rent_2021hist
+
+
+```
+
+(iii) Similar to median weekly rents, we observe that the distribution of median weekly household income in 2021 has increased as compared to 2016. Both histograms showed positively skewed distributions; however 2021's saw a greater shift towards higher incomes. There is a noticeable rise in the number of households in SA1 regions reporting higher incomes in 2021 (e.g. close to 600 households reporting having weekly incomes >AUD2000) as compared to in 2016 whereby less than 400 households have weekly incomes >AUD2000. 
+
+```{r weekly_income2016, eval = TRUE, message = FALSE}
+
+income_2016hist <- ggplot(SA1_2016, aes(x = Median_tot_hhd_inc_weekly)) +
+  geom_histogram(binwidth = 50, fill = "steelblue") +
+  scale_fill_brewer(palette = "Set1") +
+  ggtitle("Distribution of Weekly Household Incomes in 2016") +
+  xlab("Median Household Income (Weekly)") +
+  ylab("Count")
+
+income_2016hist
+
+```
+```{r weekly_income2021, eval = TRUE, message = FALSE}
+
+income_2021hist <- ggplot(SA1_2021_G02, aes(x = Median_tot_hhd_inc_weekly)) +
+  geom_histogram(binwidth = 50, fill = "red") +
+  scale_fill_brewer(palette = "Set1") +
+  ggtitle("Distribution of Weekly Household Incomes in 2021") +
+  xlab("Median Household Income (Weekly)") +
+  ylab("Count")
+
+income_2021hist
+
+```
+
+(iv) There are various reasons why comparing the median amount of money spent on housing (mortgage/rent) to 30% of the median household income is not a suitable approach. Firstly, we shouldn't assume that all households spend a fixed proportion of their income on mortgage/rent (e.g. 30% in this case). The proportion of median income spent on housing varies with different households and depends on a range of other factors as well such as number of dependents, spending priorities, lifestyle and more. Additionally, as seen previously, the cost of housing (mortgage/rent) and household incomes can vary widely across regions in Victoria. For instance, a wealthier area is less likely to experience mortgage/rental stress compared to less affluent areas, since households with higher incomes can comfortably allocate 30% of their income towards housing costs and still feel a lower financial strain than households with lower incomes. Using a single threshold such as 30% would not reflect this variability and thus may not accurately capture the actual level of mortgage/rental stress experienced by Victorian voters. 
+
+### Task 3
+
+(i) In 2016, there were 338 SA1 regions in the Melbourne electorate whereas in 2021, there were 461 SA1 regions.
+
+```{r 2016centroid, eval = TRUE, message = FALSE}
+
+joined_map_2016 <- st_join(st_centroid(SA1_2016), vic_map) %>%
+  st_join(SA1_2016 %>% select(sa1_7digitcode_2016), .) 
+
+ggplot(data = joined_map_2016) +
+   geom_sf(aes(geometry = geom, fill = Elect_div)) +
+  geom_sf(data = vic_map,
+          aes(geometry = geometry), col = "red", fill = "transparent") 
+
+```
+
+```{r 2021centroid, eval = TRUE, message = FALSE}
+
+# Reproject SA1_2021_G02 to match the CRS of vic_map
+SA1_2021_G02_reproj <- st_transform(SA1_2021_G02, st_crs(vic_map))
+
+# Perform the join operation
+joined_map_2021 <- st_join(st_centroid(SA1_2021_G02_reproj), vic_map) %>%
+  st_join(SA1_2021_G02_reproj %>% select(SA1_CODE_2021), .) 
+
+# Plot the map
+ggplot(data = joined_map_2021) +
+   geom_sf(aes(geometry = geom, fill = Elect_div)) +
+  geom_sf(data = vic_map,
+          aes(geometry = geometry), col = "red", fill = "transparent")
+
+```
+```{r SA1_regions, eval = TRUE, message = FALSE}
+
+# Number of SA1 regions in Melbourne electorate based on 2021 census data:
+n_distinct(joined_map_2021$SA1_CODE_2021.x[joined_map_2021$Elect_div == "Melbourne"])
+
+# Number of SA1 regions in Melbourne electorate based on 2016 census data:
+n_distinct(joined_map_2016$sa1_7digitcode_2016.x[joined_map_2016$Elect_div == "Melbourne"])
+
+```
+
+(ii) After selecting the variables of interest from the 2021 Census data (Median_mortgage_repay_monthly, Median_rent_weekly and Median_tot_hhd_inc_weekly), the sf object is converted to a dataframe with any missing values removed to make the analysis more manageable. The data is then aggregated by electorate using the 'group_by' function to separate the data by electorate divisions. Finally, to estimate the mean of each of the three variables; the 'summarize' and 'mean' functions are used to calculate the mean of each variable (Median_mortgage_repay_monthly, Median_rent_weekly, and Median_tot_hhd_inc_weekly) within each electorate. Missing values were also excluded using 'na.rm = TRUE'. The mean estimates for Melbourne are as shown in the table below (see caption). 
+
+```{r mean, eval = TRUE, message = FALSE}
+
+census2021 <- joined_map_2021[, c("Median_mortgage_repay_monthly", "Median_rent_weekly", "Median_tot_hhd_inc_weekly", "Elect_div")]
+
+mean_census <- as.data.frame(census2021) %>%
+  select(Elect_div, Median_mortgage_repay_monthly, Median_rent_weekly, Median_tot_hhd_inc_weekly) %>%
+  filter(!is.na(Elect_div))
+
+mean_census_df <- mean_census %>%
+  group_by(Elect_div) %>%
+  summarize(
+    Mean_Median_mortgage_repay_monthly = mean(Median_mortgage_repay_monthly, na.rm = TRUE),
+    Mean_Median_rent_weekly = mean(Median_rent_weekly, na.rm = TRUE),
+    Mean_Median_tot_hhd_inc_weekly = mean(Median_tot_hhd_inc_weekly, na.rm = TRUE)
+  )
+
+mean_census_melbourne <- mean_census_df %>%
+  filter(Elect_div == "Melbourne")
+
+caption <- "For Melbourne, we estimate that the average median monthly mortgage repayments is $2054, with the average median weekly rent being $423 and the average median total household income being $1937 (rounded up to 2 decimal points)."
+
+mean_census_melbourne %>% kable(col.names = c("Elect_div", "Mean_Median_mortgage_repay_monthly",
+                                                   "Mean_Median_rent_weekly", "Mean_Median_tot_hhd_inc_weekly"),
+                                     caption = caption) %>% 
+  kable_styling(bootstrap_options = c("striped", "hover")) 
+
+
+```
+
+(iii) Dear Victorian Labor Party, 
+
+As requested, we have conducted an analysis examining whether voters in marginal seats are being impacted by the cost of living crisis more than other electorates. We have previously seen that the marginal seats in Victoria from the 2022 federal election were Aston, Casey, Deakin, Goldstein, Higgins, Kooyong, McEwen, Menzies, Monash, Nicholls and Wannon. The latest available census data (2021) is used to estimate the median weekly income (both personal and total household income), unemployment rate, education level, median monthly mortgage repayments, average weekly rent and average household size.   
+
+When investigating the differences in median weekly personal income across electorates, we find that certain marginal electorates (e.g. Kooyong, Higgins, Goldstein) appear to be wealthier than other surrounding non-marginal electorates. However, there are also marginal electorates with lower weekly personal incomes such as Menzies, Deakin, Aston and Casey. Based on the first boxplot below, we found a strong correlation between educational attainment (i.e. the number of people holding a Bachelor's Degree) and median income. For instance, the aforementioned marginal electorates with lower personal incomes also have lower numbers of people holding a Bachelor's Degree as compared to wealthier areas such as Kooyong, Higgins and Goldstein. We can thus infer that individuals with higher levels of education are more likely to have access to better-paying jobs. We also discover that marginal electorates are experiencing lower unemployment rates as compared to other surrounding electorates. 
+
+In contrast, voters in wealthier marginal electorates (Kooyong, Higgins, Goldstein) as well as Menzies appear to be paying higher monthly mortgage repayments compared to non-marginal electorates; it is likely that households within these areas may be more affected by the impact of rising housing costs. However according to the scatterplot below, although certain marginal electorates (Kooyong, Higgins, Goldstein) are experiencing higher average weekly rents, households living within these areas also tend to be earning higher weekly incomes and are thus less likely to be impacted by the cost of living crisis. 
+
+Yet, there are also other marginal electorates (such as Menzies, Aston and Deakin) that are experiencing higher weekly rents but lower weekly household incomes - households in these areas are likely to be significantly impacted by the cost of living crisis as compared to those in other non-marginal electorates that have lower weekly rents but are earning higher weekly incomes. Additionally, we also found that in non-marginal electorates, there are more large-sized households earning higher weekly incomes as compared to similar households in marginal electorates which have lower weekly incomes. This suggests that households in non-marginal electorates may be more financially secure compared to households in marginal electorates. 
+
+In conclusion, there is reason to believe that voters in some marginal electorates (with the exception of Kooyong, Higgins, Goldstein) are likely to be more impacted by the cost of living crisis than other non-marginal electorates, especially when taking into account the variations in weekly incomes, mortgage repayments and weekly rents across electorates. Hence, the Victorian Labor Party can use these insights and develop effective policies to address the cost of living crisis in these identified marginal electorates (e.g. improving access to education or increasing supply of affordable housing).
+
+However, there are certain limitations with the data used. For instance, median weekly income does not provide information on the proportion of households living below the poverty line, which would have been a useful measure of household financial wellbeing. Median weekly income also does not fully capture differences in the cost of living or variations in other income sources (e.g. investment income) across electorates. Furthermore, although median mortgage repayments and weekly rents are useful measures of housing affordability and household debt, not all households are renting their properties (some even own their own homes outright and may not have to pay mortgage). Therefore, it is important to consider these limitations when using Australian census data to analyze the impacts of cost of living crises among electorates. 
+
+```{r income, eval = TRUE, message = FALSE}
+
+joined_map_2021 <- joined_map_2021 %>%
+  mutate(centroid = st_centroid(geom))
+
+ggplot(data = joined_map_2021) +
+  geom_sf(aes(geometry = centroid, color = Median_tot_prsnl_inc_weekly), shape = 3) +
+  geom_sf(data = vic_map,
+          aes(geometry = geometry),fill = "transparent", size = 1.3, color = "black") +
+  geom_sf_label(data = vic_map %>% filter(Elect_div %in% c("Aston", "Casey", "Deakin", "Goldstein", "Higgins", "Kooyong", "McEwen", "Menzies", "Monash", "Nicholls", "Wannon")),
+               aes(geometry = geometry, label = Elect_div), size = 2, fontface = "bold") +
+  scale_color_viridis_c(name = "Median weekly\npersonal income", option = "viridis") +
+  coord_sf(xlim = c(144.7, 145.8), ylim = c(-38.2, -37.6)) 
+
+
+```
+
+```{r , eval = FALSE}
+
+SA1_2021_G43 <- read_sf(here::here("data/Geopackage_2021_G43_VIC_GDA2020/G43_VIC_GDA2020.gpkg"), 
+                        layer = "G43_SA1_2021_VIC")
+save(SA1_2021_G43, file=here::here("data/Geopackage_2021_G43_VIC_GDA2020.rda"))
+
+```
+
+
+```{r unemployment, eval = TRUE, message = FALSE, warning = FALSE}
+
+load(here::here("data/Geopackage_2021_G43_VIC_GDA2020.rda"))
+
+SA1_2021_G43_reproj <- st_transform(SA1_2021_G43, st_crs(vic_map))
+
+new_joined_map_2021 <- st_join(st_centroid(SA1_2021_G43_reproj), vic_map) %>%
+  st_join(SA1_2021_G43_reproj %>% select(SA1_CODE_2021), .)
+
+new_joined_map_2021 <- new_joined_map_2021 %>%
+  mutate(centroid = st_centroid(geom))
+
+ggplot(data = new_joined_map_2021) +
+  geom_sf(aes(geometry = centroid, color = Percent_Unem_loyment_P), shape = 3) +
+  geom_sf(data = vic_map,
+          aes(geometry = geometry),fill = "transparent", size = 1.3, color = "black") +
+  geom_sf_label(data = vic_map %>% filter(Elect_div %in% c("Aston", "Casey", "Deakin", "Goldstein", "Higgins", "Kooyong", "McEwen", "Menzies", "Monash", "Nicholls", "Wannon")),
+               aes(geometry = geometry, label = Elect_div), size = 2, fontface = "bold") +
+  scale_color_viridis_c(name = "Unemployment Rate (%)", option = "inferno") +
+  coord_sf(xlim = c(144.8, 145.4), ylim = c(-38, -37.6)) 
+
+```
+
+
+```{r education, eval = TRUE, message = FALSE}
+
+ggplot(data = filter(new_joined_map_2021, Elect_div %in% c("Aston", "Casey", "Deakin", "Goldstein", "Higgins", "Kooyong", "McEwen", "Menzies", "Monash", "Nicholls", "Wannon")), 
+       aes(x = Elect_div,
+           y = non_sch_qual_Bchelr_Degree_P, 
+           fill = Elect_div)) +
+  geom_boxplot() +
+  scale_fill_brewer(palette = "Set3") + 
+  labs(x = "Electorate Division",
+       y = "# of People Holding a Bachelor's Degree",
+       fill = "Marginal Electorate Divisions") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+
+```
+
+```{r mortgage, eval = TRUE, message = FALSE}
+
+ggplot(data = joined_map_2021) +
+  geom_sf(aes(geometry = centroid, color = Median_mortgage_repay_monthly), shape = 3) +
+  geom_sf(data = vic_map,
+          aes(geometry = geometry),fill = "transparent", size = 1.3, color = "black") +
+  geom_sf_label(data = vic_map %>% filter(Elect_div %in% c("Aston", "Casey", "Deakin", "Goldstein", "Higgins", "Kooyong", "McEwen", "Menzies", "Monash", "Nicholls", "Wannon")),
+               aes(geometry = geometry, label = Elect_div), size = 2, fontface = "bold") +
+  scale_color_viridis_c(name = "Median monthly\nmortgage repayments", option = "plasma") +
+  coord_sf(xlim = c(144.9, 145.4), ylim = c(-38, -37.7)) 
+
+
+```
+```{r weekly_rent, eval = TRUE, message = FALSE}
+
+mean_census_df <- mean_census_df %>%
+  mutate(electorate_type = ifelse(Elect_div %in% c("Aston", "Casey", "Deakin", "Goldstein", "Higgins", "Kooyong", "McEwen", "Menzies", "Monash", "Nicholls", "Wannon"), "Marginal Electorate", "Non-marginal Electorate"))
+
+mean_census_df %>%
+  filter(!is.na(Elect_div), Mean_Median_tot_hhd_inc_weekly > 0, Mean_Median_rent_weekly > 0) %>%
+  ggplot(aes(x = Mean_Median_tot_hhd_inc_weekly, y = Mean_Median_rent_weekly, col = Elect_div)) +
+  geom_point(size = 2) + 
+  scale_color_viridis_d() +
+  labs(x = "Average weekly total household income", y = "Average weekly rent") +
+  facet_grid(cols = vars(electorate_type))
+
+```
+
+```{r household_size, eval = TRUE, message = FALSE}
+
+joined_map_2021 <- joined_map_2021 %>%
+  mutate(electorate_type = ifelse(Elect_div %in% c("Aston", "Casey", "Deakin", "Goldstein", "Higgins", "Kooyong", "McEwen", "Menzies", "Monash", "Nicholls", "Wannon"), "Marginal Electorate", "Non-marginal Electorate"))
+
+joined_map_2021 %>%
+  filter(!is.na(Elect_div), Average_household_size > 0, Median_tot_hhd_inc_weekly > 0) %>%
+  ggplot(aes(x = Average_household_size, y = Median_tot_hhd_inc_weekly, col = Elect_div)) +
+  geom_boxplot() + 
+  scale_color_viridis_d() +
+  labs(x = "Average household size", y = "Median weekly total household income") +
+  facet_grid(rows = vars(electorate_type)) 
+
+```
+
+(iv) List your data file names that you used here:
+
+- election2022: https://results.aec.gov.au/27966/Website/Downloads/HouseDopByDivisionDownload-27966.csv
+- vic_map: https://www.aec.gov.au/Electorates/gis/files/vic-july-2021-esri.zip > file name: E_VIC21_region.shp
+- enrolment_vic: https://results.aec.gov.au/27966/Website/Downloads/GeneralEnrolmentByDivisionDownload-27966.csv
+- SA1_2016: Geopackage_2016_EIUWA_for_VIC > file name: Geopackage_2016_EIUWA_for_VIC.rda
+- SA1_2021_G02: Geopackage_2021_G02_VIC_GDA2020 > file name: Geopackage_2021_G02_VIC_GDA2020.rda
+- SA1_2021_G43: Geopackage_2021_G43_VIC_GDA2020 > file name: Geopackage_2021_G43_VIC_GDA2020.rda
+
+## Resources
+
+Cite your data sources, and software used here:
+
+Australian Bureau of Statistics. (2016). Census GeoPackages: Geopackage_2016_EIUWA_for_VIC.zip [Zip file]. Retrieved from https://www.abs.gov.au/census/find-census-data/geopackages?release=2016&geography=VIC&topic=EIUW&type=EIUWA 
+
+Australian Bureau of Statistics. (2021). Census GeoPackages: G02 - Selected medians and averages. Retrieved from https://www.abs.gov.au/census/find-census-data/geopackages?release=2021&geography=VIC&topic=EI&gda=GDA2020
+
+Australian Bureau of Statistics. (2021). Census GeoPackages: G43 - Selected labour force, education and migration characteristics by sex. Retrieved from https://www.abs.gov.au/census/find-census-data/geopackages?release=2021&geography=VIC&topic=EI&gda=GDA2020
+
+Australian Electoral Commission. (2022). House of representatives downloads: Enrolment by division. Retrieved from https://results.aec.gov.au/27966/Website/HouseDownloadsMenu-27966-Csv.htm
+
+Australian Electoral Commission. (2022). House of representatives downloads: Distribution of preferences by candidate by division. Retrieved from https://results.aec.gov.au/27966/Website/HouseDownloadsMenu-27966-Csv.htm
+
+Australian Electoral Commission. (2021). Maps and data of Victorian electoral divisions: GIS data - Electoral boundaries for Victoria, July 2021, ESRI shapefile (.shp). Retrieved from https://www.aec.gov.au/Electorates/Redistributions/2021/vic/final-report/maps-data.htm
+
+H. Wickham. ggplot2: Elegant Graphics for Data Analysis. Springer-Verlag New York, 2016.
+
+Pebesma, E., 2018. Simple Features for R: Standardized Support for Spatial Vector Data. The R Journal 10 (1), 439-446, https://doi.org/10.32614/RJ-2018-009
+
+Wickham H, Averick M, Bryan J, Chang W, McGowan LD, François R, Grolemund G, Hayes A, Henry L, Hester J, Kuhn M, Pedersen TL, Miller E, Bache SM, Müller K, Ooms J, Robinson D, Seidel DP, Spinu V, Takahashi K, Vaughan D, Wilke C, Woo K, Yutani H (2019). “Welcome to the tidyverse.” _Journal of Open Source Software_, *4*(43), 1686. doi:10.21105/joss.01686 <https://doi.org/10.21105/joss.01686>.
+
+Wickham H, François R, Henry L, Müller K, Vaughan D (2023). _dplyr: A Grammar of Data Manipulation_. R package version 1.1.1, <https://CRAN.R-project.org/package=dplyr>.
+
+Yihui Xie (2015) Dynamic Documents with R and knitr. 2nd edition. Chapman and Hall/CRC. ISBN 978-1498716963
+
+Zhu H (2021). _kableExtra: Construct Complex Table with 'kable' and Pipe Syntax_. R package version 1.3.4, <https://CRAN.R-project.org/package=kableExtra>.
+
+
+The following are the OS system and R-packages used in this report:
+
+```{r}
+library(tidyverse)
+library(sf)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(sessioninfo)
+sessioninfo::session_info()
+```

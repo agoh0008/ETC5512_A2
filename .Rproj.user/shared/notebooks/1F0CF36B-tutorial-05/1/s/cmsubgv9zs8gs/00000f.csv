@@ -1,0 +1,5 @@
+"0","vic_map <- read_sf(here::here(""data/vic-july-2018-esri/E_AUGFN3_region.shp"")) %>%"
+"0","  # to match up with election data"
+"0","  mutate(DivisionNm = toupper(Elect_div))"
+"2","Error: Cannot open ""C:/Users/USER/Desktop/UNI/ETC5512 - Wild-caught data/ASSIGNMENTS/ASSIGNMENT 2/assignment2_template_2023/assignment2_template_2023/data/vic-july-2018-esri/E_AUGFN3_region.shp""; The file doesn't seem to exist.
+"

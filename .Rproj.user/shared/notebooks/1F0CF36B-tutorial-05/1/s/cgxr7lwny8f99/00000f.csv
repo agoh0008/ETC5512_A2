@@ -1,0 +1,4 @@
+"0","# for speeding up geom_sf"
+"0","if (!identical(getOption(""bitmapType""), ""cairo"") && isTRUE(capabilities()[[""cairo""]])) {"
+"0","  options(bitmapType = ""cairo"")"
+"0","}"

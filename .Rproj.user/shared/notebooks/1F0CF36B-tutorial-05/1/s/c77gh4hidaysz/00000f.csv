@@ -1,0 +1,7 @@
+"0","election2019 <- read_csv(""https://results.aec.gov.au/24310/Website/Downloads/HouseDopByDivisionDownload-24310.csv"", "
+"0","                             skip = 1) %>% "
+"0","   filter(CalculationType == ""Preference Count"" & "
+"0","             Elected == ""Y"" & "
+"0","             CountNumber == 0) %>% "
+"0","   mutate(DivisionNm = toupper(DivisionNm))"
+"0",""
